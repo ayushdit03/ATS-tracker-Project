@@ -49,7 +49,7 @@ st.markdown(
 )
 
 input_text = st.text_area("Job Description", key="input_text")
-uploaded_file = st.file_uploader("Upload Your Resume (in PDF)...", type=["pdf"])
+uploaded_file = st.file_uploader("Upload Your Resume (in PDF)...  ((USE ONLY SINGLE PAGE RESUME ))", type=["pdf"])
 
 if uploaded_file is not None:
     st.write("PDF Uploaded Successfully")
