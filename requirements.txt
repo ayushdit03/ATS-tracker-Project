@@ -1,6 +1,6 @@
 streamlit
 google-generativeai
 python-dotenv
-pymupdf
+pdf2image==1.16.0
 htbuilder
 pillow
