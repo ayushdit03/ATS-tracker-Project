@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 import streamlit as st
 import os
 from PIL import Image
-import pdf2image
+import fitz  # PyMuPDF
 import google.generativeai as genai
 import io
 import base64
@@ -21,22 +21,24 @@ def get_gemini_response(input_text, pdf_content, prompt):
     return response.text
 
 def input_pdf_setup(uploaded_file):
-    try:
-        images = pdf2image.convert_from_bytes(uploaded_file.read())
-        first_page = images[0]
+    # Open the uploaded PDF file with PyMuPDF
+    document = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+    first_page = document.load_page(0)
+    
+    # Convert the first page to an image
+    pix = first_page.get_pixmap()
+    img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+    
+    # Save the image to a bytes buffer
+    img_byte_arr = io.BytesIO()
+    img.save(img_byte_arr, format='JPEG')
+    img_byte_arr = img_byte_arr.getvalue()
         
-        img_byte_arr = io.BytesIO()
-        first_page.save(img_byte_arr, format='JPEG')
-        img_byte_arr = img_byte_arr.getvalue()
-            
-        pdf_parts = {
-            "mime_type": "image/jpeg",
-            "data": base64.b64encode(img_byte_arr).decode()  # encode to base64
-        }
-        return pdf_parts
-    except pdf2image.exceptions.PDFInfoNotInstalledError:
-        st.error("Poppler is not installed on your system. Please install Poppler to use this functionality.")
-        return None
+    pdf_parts = {
+        "mime_type": "image/jpeg",
+        "data": base64.b64encode(img_byte_arr).decode()  # encode to base64
+    }
+    return pdf_parts
 
 st.markdown(
     """
@@ -61,7 +63,7 @@ input_prompt1 = """
 You are an experienced Technical Human Resource Manager, your task is to review the provided resume against the job description. 
 Please share your professional evaluation on whether the candidate's profile aligns with the role. 
 Highlight the strengths and weaknesses of the applicant in relation to the specified job requirements.
-Also mention the views of HR perpective on this resume.
+Also mention the views of HR perspective on this resume.
 """
 
 input_prompt3 = """
@@ -73,20 +75,18 @@ the job description. First, the output should come as a percentage, then keyword
 if submit1:
     if uploaded_file is not None:
         pdf_content = input_pdf_setup(uploaded_file)
-        if pdf_content:
-            response = get_gemini_response(input_text, pdf_content, input_prompt1)
-            st.subheader("The Response is")
-            st.write(response)
+        response = get_gemini_response(input_text, pdf_content, input_prompt1)
+        st.subheader("The Response is")
+        st.write(response)
     else:
         st.write("Please upload the resume")
 
 elif submit3:
     if uploaded_file is not None:
         pdf_content = input_pdf_setup(uploaded_file)
-        if pdf_content:
-            response = get_gemini_response(input_text, pdf_content, input_prompt3)
-            st.subheader("The Response is")
-            st.write(response)
+        response = get_gemini_response(input_text, pdf_content, input_prompt3)
+        st.subheader("The Response is")
+        st.write(response)
     else:
         st.write("Please upload the resume")
 
@@ -150,7 +150,7 @@ def footer():
         " ❤️  by",
         link("https://github.com/ayushdit03", "@AyushJain"),
         "&nbsp;&nbsp;&nbsp;",
-        link("https://www.linkedin.com/in/ayush-jain-8b6985231", image('https://tse1.mm.bing.net/th?id=OIP.qgMyI8LMGST1grqseOB85AAAAA&pid=Api&P=0&h=220',width=px(25), height=px(25))),
+        link("https://www.linkedin.com/in/ayush-jain-8b6985231", image('https://tse1.mm.bing.net/th?id=OIP.qgMyI8LMGST1grqseOB85AAAAA&pid=Api&P=0&h=220', width=px(25), height=px(25))),
     ]
     layout(*myargs)
 
