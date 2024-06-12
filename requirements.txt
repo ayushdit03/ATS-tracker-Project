@@ -1,7 +1,5 @@
 streamlit
 google-generativeai
 python-dotenv
-pdf2image==1.16.0
 htbuilder
-pillow
 PyPDF2
