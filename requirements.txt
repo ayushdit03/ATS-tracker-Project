@@ -2,4 +2,5 @@ streamlit
 google-generativeai
 python-dotenv
 htbuilder
-PyPDF2
+pillow
+pymupdf
