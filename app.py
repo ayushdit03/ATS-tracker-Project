@@ -1,24 +1,13 @@
 from dotenv import load_dotenv
 import streamlit as st
 import os
-from PIL import Image
-import pdf2image
-import google.generativeai as genai
+from google.generativeai import genai
 import io
 import base64
+from PyPDF2 import PdfReader
 
 # Load environment variables
 load_dotenv()
-
-import subprocess
-
-# Install Poppler if not already installed
-try:
-    subprocess.run(["apt-get", "update", "-y"])
-    subprocess.run(["apt-get", "install", "poppler-utils", "-y"])
-except Exception as e:
-    st.error(f"An error occurred while installing Poppler: {e}")
-    
 
 # Configure the API key for the generative model
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
@@ -30,23 +19,13 @@ def get_gemini_response(input_text, pdf_content, prompt):
     response = model.generate_content([input_text, pdf_content, prompt])
     return response.text
 
-def input_pdf_setup(uploaded_file):
-    try:
-        images = pdf2image.convert_from_bytes(uploaded_file.read())
-        first_page = images[0]
-        
-        img_byte_arr = io.BytesIO()
-        first_page.save(img_byte_arr, format='JPEG')
-        img_byte_arr = img_byte_arr.getvalue()
-            
-        pdf_parts = {
-            "mime_type": "image/jpeg",
-            "data": base64.b64encode(img_byte_arr).decode()  # encode to base64
-        }
-        return pdf_parts
-    except pdf2image.exceptions.PDFInfoNotInstalledError:
-        st.error("Poppler is not installed on your system. Please install Poppler to use this functionality.")
-        return None
+def extract_text_from_pdf(uploaded_file):
+    text = ""
+    with uploaded_file as pdf_file:
+        reader = PdfReader(pdf_file)
+        for page in reader.pages:
+            text += page.extract_text()
+    return text
 
 st.markdown(
     """
@@ -82,21 +61,19 @@ the job description. First, the output should come as a percentage, then keyword
 
 if submit1:
     if uploaded_file is not None:
-        pdf_content = input_pdf_setup(uploaded_file)
-        if pdf_content:
-            response = get_gemini_response(input_text, pdf_content, input_prompt1)
-            st.subheader("The Response is")
-            st.write(response)
+        pdf_content = extract_text_from_pdf(uploaded_file)
+        response = get_gemini_response(input_text, pdf_content, input_prompt1)
+        st.subheader("The Response is")
+        st.write(response)
     else:
         st.write("Please upload the resume")
 
 elif submit3:
     if uploaded_file is not None:
-        pdf_content = input_pdf_setup(uploaded_file)
-        if pdf_content:
-            response = get_gemini_response(input_text, pdf_content, input_prompt3)
-            st.subheader("The Response is")
-            st.write(response)
+        pdf_content = extract_text_from_pdf(uploaded_file)
+        response = get_gemini_response(input_text, pdf_content, input_prompt3)
+        st.subheader("The Response is")
+        st.write(response)
     else:
         st.write("Please upload the resume")
 
@@ -110,7 +87,7 @@ def image(src_as_string, **style):
     return img(src=src_as_string, style=styles(**style))
 
 def link(link, text, **style):
-    return a(_href=link, _target="_blank", style=styles(**style))(text)
+    return a(_href=link, _target="_blank", style=styles(**style))
 
 def layout(*args):
     style = """
