@@ -15,45 +15,28 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 st.set_page_config(page_title="ATS Resume Tracker")
 
-
 def get_gemini_response(input_text, pdf_content, prompt):
     model = genai.GenerativeModel('gemini-pro-vision')
     response = model.generate_content([input_text, pdf_content, prompt])
     return response.text
 
 def input_pdf_setup(uploaded_file):
-    images = pdf2image.convert_from_bytes(uploaded_file.read())
-    first_page = images[0]
-    
-    img_byte_arr = io.BytesIO()
-    first_page.save(img_byte_arr, format='JPEG')
-    img_byte_arr = img_byte_arr.getvalue()
+    try:
+        images = pdf2image.convert_from_bytes(uploaded_file.read())
+        first_page = images[0]
         
-    pdf_parts = {
-        "mime_type": "image/jpeg",
-        "data": base64.b64encode(img_byte_arr).decode()  # encode to base64
-    }
-    return pdf_parts
-
-# # Add background image CSS
-# def add_bg_from_url():
-#     st.markdown(
-#         f"""
-#         <style>
-#         .stApp {{
-#             background: url("https://i.ytimg.com/vi/w5yhHUoJa2M/maxresdefault.jpg");
-#             background-size: cover;
-#             background-repeat: no-repeat;
-#             background-attachment: fixed;
-#         }}
-#         </style>
-#         """,
-#         unsafe_allow_html=True
-#     )
-
-# # Add background image
-# add_bg_from_url()
-
+        img_byte_arr = io.BytesIO()
+        first_page.save(img_byte_arr, format='JPEG')
+        img_byte_arr = img_byte_arr.getvalue()
+            
+        pdf_parts = {
+            "mime_type": "image/jpeg",
+            "data": base64.b64encode(img_byte_arr).decode()  # encode to base64
+        }
+        return pdf_parts
+    except pdf2image.exceptions.PDFInfoNotInstalledError:
+        st.error("Poppler is not installed on your system. Please install Poppler to use this functionality.")
+        return None
 
 st.markdown(
     """
@@ -64,6 +47,7 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
 input_text = st.text_area("Job Description", key="input_text")
 uploaded_file = st.file_uploader("Upload Your Resume (in PDF)...", type=["pdf"])
 
@@ -89,37 +73,36 @@ the job description. First, the output should come as a percentage, then keyword
 if submit1:
     if uploaded_file is not None:
         pdf_content = input_pdf_setup(uploaded_file)
-        response = get_gemini_response(input_text, pdf_content, input_prompt1)
-        st.subheader("The Response is")
-        st.write(response)
+        if pdf_content:
+            response = get_gemini_response(input_text, pdf_content, input_prompt1)
+            st.subheader("The Response is")
+            st.write(response)
     else:
         st.write("Please upload the resume")
 
 elif submit3:
     if uploaded_file is not None:
         pdf_content = input_pdf_setup(uploaded_file)
-        response = get_gemini_response(input_text, pdf_content, input_prompt3)
-        st.subheader("The Response is")
-        st.write(response)
+        if pdf_content:
+            response = get_gemini_response(input_text, pdf_content, input_prompt3)
+            st.subheader("The Response is")
+            st.write(response)
     else:
         st.write("Please upload the resume")
 
+# Footer setup (unchanged)
 import streamlit as st
 from htbuilder import HtmlElement, div, ul, li, br, hr, a, p, img, styles, classes, fonts
 from htbuilder.units import percent, px
 from htbuilder.funcs import rgba, rgb
 
-
 def image(src_as_string, **style):
     return img(src=src_as_string, style=styles(**style))
-
 
 def link(link, text, **style):
     return a(_href=link, _target="_blank", style=styles(**style))(text)
 
-
 def layout(*args):
-
     style = """
     <style>
       # MainMenu {visibility: hidden;}
@@ -127,7 +110,6 @@ def layout(*args):
      .stApp { bottom: 105px; }
     </style>
     """
-
     style_div = styles(
         position="fixed",
         left=0,
@@ -139,14 +121,12 @@ def layout(*args):
         height="auto",
         opacity=1
     )
-
     style_hr = styles(
         display="block",
         margin=px(8, 8, "auto", "auto"),
         border_style="inset",
         border_width=px(2)
     )
-
     body = p()
     foot = div(
         style=style_div
@@ -156,18 +136,13 @@ def layout(*args):
         ),
         body
     )
-
     st.markdown(style, unsafe_allow_html=True)
-
     for arg in args:
         if isinstance(arg, str):
             body(arg)
-
         elif isinstance(arg, HtmlElement):
             body(arg)
-
     st.markdown(str(foot), unsafe_allow_html=True)
-
 
 def footer():
     myargs = [
@@ -178,7 +153,6 @@ def footer():
         link("https://www.linkedin.com/in/ayush-jain-8b6985231", image('https://tse1.mm.bing.net/th?id=OIP.qgMyI8LMGST1grqseOB85AAAAA&pid=Api&P=0&h=220',width=px(25), height=px(25))),
     ]
     layout(*myargs)
-
 
 if __name__ == "__main__":
     footer()
