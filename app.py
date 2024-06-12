@@ -1,10 +1,11 @@
 from dotenv import load_dotenv
 import streamlit as st
 import os
-from google.generativeai import genai
+from PIL import Image
+import fitz  # PyMuPDF
+import google.generativeai as genai
 import io
 import base64
-from PyPDF2 import PdfReader
 
 # Load environment variables
 load_dotenv()
@@ -14,18 +15,28 @@ genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
 st.set_page_config(page_title="ATS Resume Tracker")
 
-def get_gemini_response(input_text, pdf_content, prompt):
+def get_gemini_response(input_text, pdf_images, prompt):
     model = genai.GenerativeModel('gemini-pro-vision')
-    response = model.generate_content([input_text, pdf_content, prompt])
+    response = model.generate_content([input_text, *pdf_images, prompt])
     return response.text
 
-def extract_text_from_pdf(uploaded_file):
-    text = ""
-    with uploaded_file as pdf_file:
-        reader = PdfReader(pdf_file)
-        for page in reader.pages:
-            text += page.extract_text()
-    return text
+def input_pdf_setup(uploaded_file):
+    pdf_document = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+    images = []
+
+    for page_num in range(len(pdf_document)):
+        page = pdf_document.load_page(page_num)
+        pix = page.get_pixmap()
+        img_byte_arr = io.BytesIO()
+        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+        img.save(img_byte_arr, format='JPEG')
+        img_byte_arr = img_byte_arr.getvalue()
+        images.append({
+            "mime_type": "image/jpeg",
+            "data": base64.b64encode(img_byte_arr).decode()
+        })
+        
+    return images
 
 st.markdown(
     """
@@ -61,19 +72,21 @@ the job description. First, the output should come as a percentage, then keyword
 
 if submit1:
     if uploaded_file is not None:
-        pdf_content = extract_text_from_pdf(uploaded_file)
-        response = get_gemini_response(input_text, pdf_content, input_prompt1)
-        st.subheader("The Response is")
-        st.write(response)
+        pdf_content = input_pdf_setup(uploaded_file)
+        if pdf_content:
+            response = get_gemini_response(input_text, pdf_content, input_prompt1)
+            st.subheader("The Response is")
+            st.write(response)
     else:
         st.write("Please upload the resume")
 
 elif submit3:
     if uploaded_file is not None:
-        pdf_content = extract_text_from_pdf(uploaded_file)
-        response = get_gemini_response(input_text, pdf_content, input_prompt3)
-        st.subheader("The Response is")
-        st.write(response)
+        pdf_content = input_pdf_setup(uploaded_file)
+        if pdf_content:
+            response = get_gemini_response(input_text, pdf_content, input_prompt3)
+            st.subheader("The Response is")
+            st.write(response)
     else:
         st.write("Please upload the resume")
 
@@ -87,7 +100,7 @@ def image(src_as_string, **style):
     return img(src=src_as_string, style=styles(**style))
 
 def link(link, text, **style):
-    return a(_href=link, _target="_blank", style=styles(**style))
+    return a(_href=link, _target="_blank", style=styles(**style))(text)
 
 def layout(*args):
     style = """
