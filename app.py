@@ -10,6 +10,16 @@ import base64
 # Load environment variables
 load_dotenv()
 
+import subprocess
+
+# Install Poppler if not already installed
+try:
+    subprocess.run(["apt-get", "update", "-y"])
+    subprocess.run(["apt-get", "install", "poppler-utils", "-y"])
+except Exception as e:
+    st.error(f"An error occurred while installing Poppler: {e}")
+    
+
 # Configure the API key for the generative model
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
