@@ -4,3 +4,4 @@ python-dotenv
 htbuilder
 pillow
 pymupdf
+gunicorn
